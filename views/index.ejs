@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= title %></title>
+    <%- include('header') %>
+</head>
+<body>
+    <div class="container">
+        <h1><%= title %></h1>
+        <!-- Penting: tambahkan enctype untuk unggahan file -->
+        <form action="/request" method="POST" enctype="multipart/form-data">
+            <div class="form-group">
+                <label for="title">Judul Permintaan:</label>
+                <input type="text" id="title" name="title" required>
+            </div>
+            <div class="form-group">
+                <label for="description">Deskripsi:</label>
+                <textarea id="description" name="description" rows="5" required></textarea>
+            </div>
+            
+            <!-- Input URL Baru -->
+            <div class="form-group">
+                <label for="requestUrl">URL Referensi (Opsional):</label>
+                <input type="url" id="requestUrl" name="requestUrl" placeholder="https://example.com">
+            </div>
+
+            <!-- Input File Gambar Baru -->
+            <div class="form-group">
+                <label for="requestImage">Contoh Gambar (Opsional):</label>
+                <input type="file" id="requestImage" name="requestImage" accept="image/png, image/jpeg, image/jpg">
+            </div>
+
+            <button type="submit" class="btn-submit">Kirim Permintaan</button>
+        </form>
+    </div>
+    <%- include('footer') %>
+</body>
+</html>

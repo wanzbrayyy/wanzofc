@@ -1,0 +1,78 @@
+const express = require('express');
+const mongoose = require('mongoose');
+const path = require('path');
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+
+mongoose.connect('mongodb+srv://zanssxploit:pISqUYgJJDfnLW9b@cluster0.fgram.mongodb.net/scmarket_db?retryWrites=true&w=majority', {
+  useNewUrlParser: true,
+  useUnifiedTopology: true
+})
+.then(() => console.log('Connected to MongoDB'))
+.catch(err => console.error('Could not connect to MongoDB:', err));
+
+// Definisi Skema Mongoose
+const requestSchema = new mongoose.Schema({
+  title: String,
+  description: String,
+  status: { type: String, default: 'Pending' },
+  createdAt: { type: Date, default: Date.now }
+});
+
+const Request = mongoose.model('Request', requestSchema);
+
+// Middleware
+app.set('view engine', 'ejs');
+app.set('views', path.join(__dirname, 'views'));
+app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.urlencoded({ extended: true })); // Untuk parsing body dari form
+
+// Routes
+
+// Halaman Utama (Form Request)
+app.get('/', (req, res) => {
+  res.render('index', { title: 'Buat Permintaan Baru' });
+});
+
+app.post('/request', async (req, res) => {
+  try {
+    const { title, description } = req.body;
+    const newRequest = new Request({ title, description });
+    await newRequest.save();
+    res.redirect('/');
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Error submitting request');
+  }
+});
+
+// Halaman Admin (Daftar Request)
+app.get('/admin', async (req, res) => {
+  try {
+    const requests = await Request.find().sort({ createdAt: -1 });
+    res.render('admin', { title: 'Daftar Permintaan (Admin)', requests });
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Error fetching requests');
+  }
+});
+
+// Update Status Request (Contoh: Hanya sebagai demo, perlu autentikasi di produksi)
+app.post('/admin/update-status/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    await Request.findByIdAndUpdate(id, { status: status });
+    res.redirect('/admin');
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Error updating request status');
+  }
+});
+
+
+app.listen(PORT, () => {
+  console.log(`Server running on http://localhost:${PORT}`);
+});

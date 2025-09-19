@@ -1,0 +1,17 @@
+{
+  "name": "wanz-userbot",
+  "version": "1.0.0",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js",
+    "user": "node userbot.js"
+  },
+  "dependencies": {
+    "ejs": "^3.1.10",
+    "express": "^5.1.0",
+    "mongoose": "^8.18.1",
+    "multer": "^2.0.2",
+    "readline-sync": "^1.4.10",
+    "telegraf": "^4.16.2"
+  }
+}

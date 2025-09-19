@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= title %></title>
+    <%- include('header') %>
+</head>
+<body>
+    <div class="container">
+        <h1><%= title %></h1>
+
+        <% if (requests.length === 0) { %>
+            <p>Belum ada permintaan.</p>
+        <% } else { %>
+            <div class="request-list">
+                <% requests.forEach(request => { %>
+                    <!-- Beri ID unik untuk setiap kartu agar bisa ditargetkan oleh script -->
+                    <div class="request-card <%= request.status.toLowerCase().replace(' ', '-') %>" id="card-<%= request._id %>">
+                        <div class="card-status-tab">
+                            <span><%= request.status %></span>
+                        </div>
+                        <div class="card-content">
+                            <h2><%= request.title %></h2>
+                            <p><%= request.description %></p>
+
+                            <!-- Tampilkan URL jika ada -->
+                            <% if (request.url) { %>
+                                <div class="request-extra">
+                                    <strong>URL:</strong> <a href="<%= request.url %>" target="_blank" rel="noopener noreferrer">Lihat Tautan</a>
+                                </div>
+                            <% } %>
+
+                            <!-- Tampilkan Gambar jika ada -->
+                            <% if (request.imageUrl) { %>
+                                <div class="request-image-container">
+                                    <img src="<%= request.imageUrl %>" alt="Contoh Request" class="request-image">
+                                </div>
+                            <% } %>
+
+                            <div class="request-meta">
+                                <span>Dibuat: <%= request.createdAt.toLocaleString() %></span>
+                            </div>
+                            <div class="action-buttons">
+                                <form action="/admin/update-status/<%= request._id %>" method="POST" style="display: inline;">
+                                    <select name="status" onchange="this.form.submit()">
+                                        <option value="Pending" <%= request.status === 'Pending' ? 'selected' : '' %>>Pending</option>
+                                        <option value="In Progress" <%= request.status === 'In Progress' ? 'selected' : '' %>>In Progress</option>
+                                        <option value="Completed" <%= request.status === 'Completed' ? 'selected' : '' %>>Completed</option>
+                                        <option value="Rejected" <%= request.status === 'Rejected' ? 'selected' : '' %>>Rejected</option>
+                                    </select>
+                                </form>
+                                <!-- Tombol Unduh, dengan data-id untuk menargetkan kartu yang benar -->
+                                <button class="btn-download" data-id="card-<%= request._id %>" data-title="<%= request.title %>">
+                                    Unduh
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                <% }) %>
+            </div>
+        <% } %>
+    </div>
+
+    <!-- Library untuk mengubah HTML ke Gambar -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Logika untuk tombol unduh
+        document.querySelectorAll('.btn-download').forEach(button => {
+            button.addEventListener('click', function() {
+                const cardId = this.getAttribute('data-id');
+                const cardTitle = this.getAttribute('data-title').replace(/[^a-zA-Z0-9]/g, '-').toLowerCase();
+                const cardElement = document.getElementById(cardId);
+
+                if (cardElement) {
+                    html2canvas(cardElement, { 
+                        useCORS: true, // Diperlukan jika gambar dari domain lain
+                        backgroundColor: '#1a1a1a' // Sesuaikan dengan warna latar kartu
+                    }).then(canvas => {
+                        const link = document.createElement('a');
+                        link.download = `request-${cardTitle}.png`;
+                        link.href = canvas.toDataURL('image/png');
+                        link.click();
+                    });
+                }
+            });
+        });
+    });
+    </script>
+    <%- include('footer') %>
+</body>
+</html>
