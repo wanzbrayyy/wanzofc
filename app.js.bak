@@ -1,77 +1,148 @@
+require('dotenv').config();
+
 const express = require('express');
 const mongoose = require('mongoose');
 const path = require('path');
+const multer = require('multer');
+const telegramBot = require('./telegram');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+const storage = multer.diskStorage({
+  destination: './public/uploads/',
+  filename: function(req, file, cb){
+    cb(null, file.fieldname + '-' + Date.now() + path.extname(file.originalname));
+  }
+});
 
-mongoose.connect('mongodb+srv://zanssxploit:pISqUYgJJDfnLW9b@cluster0.fgram.mongodb.net/scmarket_db?retryWrites=true&w=majority', {
-  useNewUrlParser: true,
-  useUnifiedTopology: true
-})
-.then(() => console.log('Connected to MongoDB'))
-.catch(err => console.error('Could not connect to MongoDB:', err));
+const upload = multer({
+  storage: storage,
+  limits: { fileSize: 10000000 }
+}).single('requestImage');
 
-// Definisi Skema Mongoose
 const requestSchema = new mongoose.Schema({
   title: String,
   description: String,
+  url: String,
+  imageUrl: String,
   status: { type: String, default: 'Pending' },
   createdAt: { type: Date, default: Date.now }
 });
 
-const Request = mongoose.model('Request', requestSchema);
+const groupSettingsSchema = new mongoose.Schema({
+    chatId: { type: String, required: true, unique: true },
+    welcome: {
+        enabled: { type: Boolean, default: false },
+        message: { type: String, default: 'Selamat datang {fullname} di grup {groupname}!' },
+        useVerification: { type: Boolean, default: true }
+    },
+    goodbye: {
+        enabled: { type: Boolean, default: false },
+        message: { type: String, default: 'Selamat tinggal {fullname}!' }
+    },
+    moderation: {
+        antiLink: { type: Boolean, default: false },
+        warnLimit: { type: Number, default: 3 },
+        badWords: { type: [String], default: [] }
+    }
+});
 
-// Middleware
+const userWarningsSchema = new mongoose.Schema({
+    userId: { type: String, required: true },
+    chatId: { type: String, required: true },
+    warns: { type: Number, default: 0 }
+});
+userWarningsSchema.index({ userId: 1, chatId: 1 }, { unique: true });
+
+const Request = mongoose.model('Request', requestSchema);
+const GroupSettings = mongoose.model('GroupSettings', groupSettingsSchema);
+const UserWarnings = mongoose.model('UserWarnings', userWarningsSchema);
+
+module.exports = { Request, GroupSettings, UserWarnings };
+
+mongoose.connect(process.env.MONGO_URI || 'mongodb+srv://zanssxploit:pISqUYgJJDfnLW9b@cluster0.fgram.mongodb.net/scmarket_db?retryWrites=true&w=majority', {
+  useNewUrlParser: true,
+  useUnifiedTopology: true
+})
+.then(() => {
+    console.log('Connected to MongoDB');
+    telegramBot.initializeBot();
+})
+.catch(err => console.error('Could not connect to MongoDB:', err));
+
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 app.use(express.static(path.join(__dirname, 'public')));
-app.use(express.urlencoded({ extended: true })); // Untuk parsing body dari form
+app.use(express.urlencoded({ extended: true }));
 
-// Routes
-
-// Halaman Utama (Form Request)
 app.get('/', (req, res) => {
   res.render('index', { title: 'Buat Permintaan Baru' });
 });
 
-app.post('/request', async (req, res) => {
-  try {
-    const { title, description } = req.body;
-    const newRequest = new Request({ title, description });
-    await newRequest.save();
-    res.redirect('/');
-  } catch (err) {
-    console.error(err);
-    res.status(500).send('Error submitting request');
-  }
+app.post('/request', (req, res) => {
+  upload(req, res, async (err) => {
+    if(err){
+      res.render('index', { title: 'Buat Permintaan Baru', msg: err });
+    } else {
+      try {
+        const newRequest = new Request({
+          title: req.body.title,
+          description: req.body.description,
+          url: req.body.requestUrl,
+          imageUrl: req.file ? `/uploads/${req.file.filename}` : null
+        });
+        await newRequest.save();
+        
+        telegramBot.sendNotification(newRequest).catch(console.error);
+        
+        res.redirect('/');
+      } catch (dbErr) {
+        console.error(dbErr);
+        res.status(500).send('Error submitting request to database');
+      }
+    }
+  });
 });
 
-// Halaman Admin (Daftar Request)
 app.get('/admin', async (req, res) => {
   try {
-    const requests = await Request.find().sort({ createdAt: -1 });
-    res.render('admin', { title: 'Daftar Permintaan (Admin)', requests });
+    const page = parseInt(req.query.page) || 1;
+    const requestsPerPage = 6;
+
+    const totalRequests = await Request.countDocuments();
+    const totalPages = Math.ceil(totalRequests / requestsPerPage);
+
+    const requests = await Request.find()
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * requestsPerPage)
+      .limit(requestsPerPage);
+
+    res.render('admin', { 
+      title: 'Daftar Permintaan (Admin)', 
+      requests,
+      totalPages,
+      currentPage: page
+    });
+
   } catch (err) {
     console.error(err);
     res.status(500).send('Error fetching requests');
   }
 });
 
-// Update Status Request (Contoh: Hanya sebagai demo, perlu autentikasi di produksi)
 app.post('/admin/update-status/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
     await Request.findByIdAndUpdate(id, { status: status });
-    res.redirect('/admin');
+    const referer = req.header('Referer') || '/admin';
+    res.redirect(referer);
   } catch (err) {
     console.error(err);
     res.status(500).send('Error updating request status');
   }
 });
-
 
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);

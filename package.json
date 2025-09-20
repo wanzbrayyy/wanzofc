@@ -7,10 +7,13 @@
     "user": "node userbot.js"
   },
   "dependencies": {
+    "axios": "^1.12.2",
+    "dotenv": "^17.2.2",
     "ejs": "^3.1.10",
     "express": "^5.1.0",
     "mongoose": "^8.18.1",
     "multer": "^2.0.2",
+    "node-telegram-bot-api": "^0.66.0",
     "readline-sync": "^1.4.10",
     "telegraf": "^4.16.2"
   }

@@ -283,3 +283,45 @@ form {
         padding: 15px;
     }
 }
+/* public/css/style.css - TAMBAHAN */
+
+.btn-download {
+    padding: 8px 12px;
+}
+
+.request-list {
+    touch-action: pan-y; /* Memungkinkan scroll vertikal sambil menangkap swipe horizontal */
+}
+
+/* --- Pagination Styles --- */
+.pagination-controls {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: 40px;
+    gap: 20px;
+    user-select: none;
+}
+
+.pagination-arrow {
+    color: var(--text-light);
+    font-size: 1.5rem;
+    text-decoration: none;
+    transition: color 0.3s, transform 0.3s;
+}
+
+.pagination-arrow:hover {
+    color: var(--accent-color);
+    transform: scale(1.2);
+}
+
+.pagination-arrow.disabled {
+    color: #555;
+    cursor: not-allowed;
+}
+
+.page-info {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-light);
+}

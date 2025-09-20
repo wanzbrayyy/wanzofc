@@ -11,11 +11,10 @@
         <h1><%= title %></h1>
 
         <% if (requests.length === 0) { %>
-            <p>Belum ada permintaan.</p>
+            <p style="text-align: center;">Belum ada permintaan.</p>
         <% } else { %>
-            <div class="request-list">
+            <div class="request-list" id="request-list">
                 <% requests.forEach(request => { %>
-                    <!-- Beri ID unik untuk setiap kartu agar bisa ditargetkan oleh script -->
                     <div class="request-card <%= request.status.toLowerCase().replace(' ', '-') %>" id="card-<%= request._id %>">
                         <div class="card-status-tab">
                             <span><%= request.status %></span>
@@ -24,14 +23,12 @@
                             <h2><%= request.title %></h2>
                             <p><%= request.description %></p>
 
-                            <!-- Tampilkan URL jika ada -->
                             <% if (request.url) { %>
                                 <div class="request-extra">
                                     <strong>URL:</strong> <a href="<%= request.url %>" target="_blank" rel="noopener noreferrer">Lihat Tautan</a>
                                 </div>
                             <% } %>
 
-                            <!-- Tampilkan Gambar jika ada -->
                             <% if (request.imageUrl) { %>
                                 <div class="request-image-container">
                                     <img src="<%= request.imageUrl %>" alt="Contoh Request" class="request-image">
@@ -50,35 +47,53 @@
                                         <option value="Rejected" <%= request.status === 'Rejected' ? 'selected' : '' %>>Rejected</option>
                                     </select>
                                 </form>
-                                <!-- Tombol Unduh, dengan data-id untuk menargetkan kartu yang benar -->
                                 <button class="btn-download" data-id="card-<%= request._id %>" data-title="<%= request.title %>">
-                                    Unduh
+                                    <i class="fas fa-download"></i>
                                 </button>
                             </div>
                         </div>
                     </div>
                 <% }) %>
             </div>
+
+            <!-- --- KONTROL PAGINASI BARU --- -->
+            <% if (totalPages > 1) { %>
+            <div class="pagination-controls">
+                <% if (currentPage > 1) { %>
+                    <a href="/admin?page=<%= currentPage - 1 %>" class="pagination-arrow">
+                        <i class="fas fa-chevron-left"></i>
+                    </a>
+                <% } else { %>
+                    <span class="pagination-arrow disabled"><i class="fas fa-chevron-left"></i></span>
+                <% } %>
+
+                <span class="page-info">Page <%= currentPage %> of <%= totalPages %></span>
+
+                <% if (currentPage < totalPages) { %>
+                    <a href="/admin?page=<%= currentPage + 1 %>" class="pagination-arrow">
+                        <i class="fas fa-chevron-right"></i>
+                    </a>
+                <% } else { %>
+                    <span class="pagination-arrow disabled"><i class="fas fa-chevron-right"></i></span>
+                <% } %>
+            </div>
+            <% } %>
+
         <% } %>
     </div>
 
-    <!-- Library untuk mengubah HTML ke Gambar -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     
     <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Logika untuk tombol unduh
+        // --- SCRIPT UNDUH (sedikit modifikasi) ---
         document.querySelectorAll('.btn-download').forEach(button => {
             button.addEventListener('click', function() {
                 const cardId = this.getAttribute('data-id');
                 const cardTitle = this.getAttribute('data-title').replace(/[^a-zA-Z0-9]/g, '-').toLowerCase();
                 const cardElement = document.getElementById(cardId);
-
                 if (cardElement) {
-                    html2canvas(cardElement, { 
-                        useCORS: true, // Diperlukan jika gambar dari domain lain
-                        backgroundColor: '#1a1a1a' // Sesuaikan dengan warna latar kartu
-                    }).then(canvas => {
+                    html2canvas(cardElement, { useCORS: true, backgroundColor: '#1a1a1a' }).then(canvas => {
                         const link = document.createElement('a');
                         link.download = `request-${cardTitle}.png`;
                         link.href = canvas.toDataURL('image/png');
@@ -87,6 +102,39 @@
                 }
             });
         });
+
+        // --- SCRIPT SWIPE UNTUK MOBILE ---
+        const requestList = document.getElementById('request-list');
+        if (requestList) {
+            let touchstartX = 0;
+            let touchendX = 0;
+            const swipeThreshold = 50; // Jarak minimum swipe
+
+            const currentPage = <%= currentPage %>;
+            const totalPages = <%= totalPages %>;
+
+            function handleSwipe() {
+                if (touchendX < touchstartX - swipeThreshold) { // Swipe ke kiri
+                    if (currentPage < totalPages) {
+                        window.location.href = `/admin?page=${currentPage + 1}`;
+                    }
+                }
+                if (touchendX > touchstartX + swipeThreshold) { // Swipe ke kanan
+                    if (currentPage > 1) {
+                        window.location.href = `/admin?page=${currentPage - 1}`;
+                    }
+                }
+            }
+
+            requestList.addEventListener('touchstart', e => {
+                touchstartX = e.changedTouches[0].screenX;
+            });
+
+            requestList.addEventListener('touchend', e => {
+                touchendX = e.changedTouches[0].screenX;
+                handleSwipe();
+            });
+        }
     });
     </script>
     <%- include('footer') %>
